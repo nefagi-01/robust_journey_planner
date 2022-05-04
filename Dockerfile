@@ -221,7 +221,7 @@ RUN echo 'export HADOOP_USER_NAME=${RENKU_USERNAME}' >> ~/.bashrc && \
 # Fix issues with older version of beeline being installed by conda
 USER root
 
-RUN while [[ "$(which beeline)" =~ /conda/ ]]; do i=$(which beeline); if [[ "$(dirname ${i})" =~ /conda/ ]]; then echo mv ${i} ${i}.conda; fi; done
+RUN i=$(which beeline) && if [[ "${i}" =~ /conda/ ]]; then echo mv ${i} ${i}.conda; fi
 
 USER ${NB_USER}
 
