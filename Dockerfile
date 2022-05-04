@@ -218,6 +218,13 @@ RUN echo 'export HADOOP_USER_NAME=${RENKU_USERNAME}' >> ~/.bashrc && \
     </property>\n\
 </configuration>' > ~/.beeline/beeline-hs2-connection.xml
 
+# Fix issues with older version of beeline being installed by conda
+USER root
+
+RUN while [[ "${i:=$(which beeline)}" =~ /conda/ ]]; do if [[ "$(dirname ${i})" =~ /conda/ ]]; then echo mv ${i} ${i}.conda; fi; done
+
+USER ${NB_USER}
+
 # RENKU_VERSION determines the version of the renku CLI
 # that will be used in this image. To find the latest version,
 # visit https://pypi.org/project/renku/#history.
