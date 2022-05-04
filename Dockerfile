@@ -159,7 +159,7 @@ RUN conda env update -q -f /tmp/environment.yml && \
     sed -Esi -e "s|'user',\s*None|'user', os.environ['RENKU_USERNAME']|g" \
              -e "s|'effective_user',\s*None|'effective_user', user|g" \
             /opt/conda/lib/*/site-packages/hdfs3/core.py && \
-    conda env export -n "root"
+    true
 
 # Install sparkmagic & bash kernel
 RUN export JUPYTERLAB_DIR=/opt/conda/share/jupyter/lab && \
