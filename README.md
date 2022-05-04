@@ -278,7 +278,7 @@ Figure 1. better illustrates the above concepts relating stops, routes, trips an
 
 #### Stations data
 
-For your convenience we also provide a consolidated liste of stop locations in ORC format under `/data/sbb/orc/geostops`. The schema of this table is the same as for the `stops.txt` format described earlier.
+For your convenience we also provide a consolidated liste of stop locations in ORC format under `/data/sbb/orc/allstops`. The schema of this table is the same as for the `stops.txt` format described earlier.
 
 Finally, you may also find additional stops data in [BFKOORD_GEO](https://opentransportdata.swiss/en/dataset/bhlist).
 Note however that this list has not been updated since 2017, and it is not as complete as the stops data from the GTFS timetables. It has the altitude information of the stops, which is not available from the timetable files, in case you need that.
