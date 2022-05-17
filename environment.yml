@@ -18,6 +18,7 @@ dependencies:
   - pykafka
   - voila
   - hdfs3
+  - geopy
   - pip
   - pip:
       - hdijupyterutils==0.19.1
