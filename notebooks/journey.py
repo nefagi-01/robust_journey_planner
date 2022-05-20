@@ -3,7 +3,7 @@ import numpy as np
 from datetime import datetime
 
 # CONSTANTS
-SECONDS_FOR_MOVING_INSIDE_STATIONS = 60
+CHANGE_TIME = 120
 
 class Link:
     def __init__(self, dep_stop, arr_stop, dep_time, arr_time):
@@ -42,7 +42,7 @@ class Trip(Link):
         return 1.
 
     def __str__(self):
-        return "At {}, take the line {} with arrival at time {} in {}".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip_id,
+        return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip_id,
                                                                               datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'), self.arr_stop)
 
 
@@ -51,11 +51,11 @@ class Footpath(Link):
         super().__init__(dep_stop, arr_stop, dep_time, arr_time)
 
     def __str__(self):
-        return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated time for moving inside each station of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time + SECONDS_FOR_MOVING_INSIDE_STATIONS).strftime('%H:%M:%S'),
+        return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated total time for moving inside stations of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time + CHANGE_TIME / 2).strftime('%H:%M:%S'),
                                                                                                 self.dep_stop,
                                                                                                 self.arr_stop,
-                                                                                                datetime.utcfromtimestamp(self.arr_time - SECONDS_FOR_MOVING_INSIDE_STATIONS).strftime('%H:%M:%S'),
-                                                                                                SECONDS_FOR_MOVING_INSIDE_STATIONS)
+                                                                                                datetime.utcfromtimestamp(self.arr_time - CHANGE_TIME / 2).strftime('%H:%M:%S'),
+                                                                                                CHANGE_TIME)
 
 
 class Change:
@@ -65,11 +65,10 @@ class Change:
         self.following_trip_id = following_trip_id
 
     def __str__(self):
-        return "After reaching station {}, change from line {} to line {} (estimated change time of {} seconds)".format(
+        return "After reaching station {}, change from line {} to line {}.".format(
             self.stop,
             self.previous_trip_id,
-            self.following_trip_id,
-            SECONDS_FOR_MOVING_INSIDE_STATIONS)
+            self.following_trip_id)
 
 
 class Journey:
