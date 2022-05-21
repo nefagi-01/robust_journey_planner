@@ -42,8 +42,8 @@ class Trip(Link):
         return 1.
 
     def __str__(self):
-        return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip_id,
-                                                                              datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'), self.arr_stop)
+        return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip_id['trip_short_name'],
+                                                                              datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'), self.arr_stop['stop_name'])
 
 
 class Footpath(Link):
@@ -52,8 +52,8 @@ class Footpath(Link):
 
     def __str__(self):
         return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated total time for moving inside stations of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time + CHANGE_TIME / 2).strftime('%H:%M:%S'),
-                                                                                                self.dep_stop,
-                                                                                                self.arr_stop,
+                                                                                                self.dep_stop['stop_name'],
+                                                                                                self.arr_stop['stop_name'],
                                                                                                 datetime.utcfromtimestamp(self.arr_time - CHANGE_TIME / 2).strftime('%H:%M:%S'),
                                                                                                 CHANGE_TIME)
 
@@ -66,9 +66,9 @@ class Change:
 
     def __str__(self):
         return "After reaching station {}, change from line {} to line {}.".format(
-            self.stop,
-            self.previous_trip_id,
-            self.following_trip_id)
+            self.stop['stop_name'],
+            self.previous_trip_id['trip_short_name'],
+            self.following_trip_id['trip_short_name'])
 
 
 class Journey:

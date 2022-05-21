@@ -2,6 +2,7 @@ from collections import defaultdict
 import numpy as np
 from datetime import datetime
 from journey import *
+import bisect
 
 # CSA HELPERS
 
@@ -29,6 +30,16 @@ def search_next_departure(stop_departures, time):
     next_profile_entry = stop_departures[next_departure_index]
 
     return next_departure_index, next_profile_entry
+
+def search_last_connection(connections, max_arrival_time):
+    increasing_dep_times = [x['departure_time'] for x in connections[::-1]]
+    
+    i = bisect_right(increasing_dep_times, max_arrival_time)
+    increasing_last_index = i - 1
+    
+    last_index = len(connections) - increasing_last_index
+    
+    return last_index
 
 
 def shift(vector, include_earliest_arrival=False):
@@ -72,11 +83,10 @@ def minimize_with_enter_exit_connections(old_arrivals, old_enter_connections, ta
 
 class JourneyPlanner:
     def __init__(self, timetable):
-        self.timetable = timetable
+        self.stops, self.connections, self.trips, self.footpaths = timetable
 
-    def get_timetable(self, day, max_arrival_time):
-        stops, connections, trips, footpaths = self.timetable
-        return stops, connections[day], trips, footpaths
+    def get_query_connections(self, day, max_arrival_time):
+        return self.connections[day]
 
     def CSA(self, day, target_stop, min_departure_time, max_arrival_time, max_changes, include_earliest_arrival):
         '''
@@ -84,7 +94,8 @@ class JourneyPlanner:
         '''
 
         # Get timetable of the day
-        stops, connections, trips, footpaths = self.get_timetable(day, max_arrival_time)
+        connections = self.get_query_connections(day, max_arrival_time)
+        footpaths = self.footpaths
 
         # If max_changes is X, we want X+1 long vectors (one per changes, including max_changes)
         max_changes += 1
@@ -102,9 +113,10 @@ class JourneyPlanner:
         D = defaultdict(lambda: np.inf)
 
         # initialize footpaths from stops to target stop
-        for footpath in footpaths[target_stop]:
-            f_dep_stop, f_dur = footpath
-            D[f_dep_stop] = f_dur
+        if target_stop in footpaths:
+            for footpath in footpaths[target_stop].items():
+                f_dep_stop, f_dur = footpath
+                D[f_dep_stop] = f_dur
 
         for connection in connections:
             c_dep_stop, c_arr_stop, c_dep_time, c_arr_time, c_trip = connection
@@ -156,9 +168,13 @@ class JourneyPlanner:
                                      {'departure_time': c_dep_time, 'arrival_times': new_min_arrivals,
                                       'enter_connections': new_enter_connections,
                                       'exit_connections': new_exit_connections})
+                
+                # If c_dep_stop is not reachable from any other stop
+                if c_dep_stop not in footpaths:
+                    continue
 
                 # Update for the footpath departure stop of all footpaths towards the departure stop of the connection
-                for footpath in footpaths[c_dep_stop]:
+                for footpath in footpaths[c_dep_stop].items():
                     f_dep_stop, f_dur = footpath
                     next_departure_index, next_profile_entry = search_next_departure(S[f_dep_stop],
                                                                                      c_dep_time - f_dur - CHANGE_TIME)  # We assume that we need CHANGE_TIME seconds to move in addition to the duration of the footpath
@@ -250,7 +266,6 @@ class JourneyPlanner:
         '''
             From paths (list of pairs of enter_connection, exit_connections) to journeys (list of links)
         '''
-        stops, connections, trips, footpaths = self.timetable
 
         if path is None:
             return None
@@ -263,8 +278,8 @@ class JourneyPlanner:
         trip_end = path[1]
         next_departure_time = path[2][2] if len(path) > 2 else maximum_arrival_time
         maximum_delay = next_departure_time - trip_end[3]
-        trip = Trip(dep_stop=trip_start[0], arr_stop=trip_end[1], dep_time=trip_start[2], arr_time=trip_end[3],
-                    trip_id=trip_start[4], maximum_delay=maximum_delay)
+        trip = Trip(dep_stop=self.stops[trip_start[0]], arr_stop=self.stops[trip_end[1]], dep_time=trip_start[2], arr_time=trip_end[3],
+                        trip_id=self.trips[trip_start[4]], maximum_delay=maximum_delay)
         journey.add_trip(trip)
 
         # Update previous exit connection for detecting footpaths
@@ -277,21 +292,21 @@ class JourneyPlanner:
 
             # If the last arrival stop is not the following departing stations, we need to walk from one stop to the other
             if trip_start[0] != previous_exit_connection[1]:
-                footpath = Footpath(previous_exit_connection[1], trip_start[0], previous_exit_connection[3],
+                footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[trip_start[0]], previous_exit_connection[3],
                                     footpaths[trip_start[0]][previous_exit_connection[1]])
                 journey.add_footpath(footpath)
 
             # Otherwise, we just need to change in the same station before the new link if the departure station is not
             # the first one
             else:
-                change = Change(trip_start[0], previous_exit_connection[4], trip_start[4])
+                change = Change(self.stops[trip_start[0]], self.trips[previous_exit_connection[4]], self.trips[trip_start[4]])
                 journey.add_change(change)
 
             # Finally, add the new trip after the footpath / change
             next_departure_time = path[(i + 1) * 2][2] if len(path) > (i + 1) * 2 else maximum_arrival_time
             maximum_delay = next_departure_time - trip_end[3]
-            trip = Trip(dep_stop=trip_start[0], arr_stop=trip_end[1], dep_time=trip_start[2], arr_time=trip_end[3],
-                        trip_id=trip_start[4], maximum_delay=maximum_delay)
+            trip = Trip(dep_stop=self.stops[trip_start[0]], arr_stop=self.stops[trip_end[1]], dep_time=trip_start[2], arr_time=trip_end[3],
+                        trip_id=self.trips[trip_start[4]], maximum_delay=maximum_delay)
             journey.add_trip(trip)
 
             # Update previous exit connection for detecting footpaths
@@ -309,12 +324,13 @@ class JourneyPlanner:
 
         # Run CSA
         S = self.CSA(day=day, target_stop=target_stop, min_departure_time=min_departure_time, max_arrival_time=max_arrival_time, max_changes=max_changes, include_earliest_arrival=include_earliest_arrival)
-
+        
         # Extract the paths
         paths = self.extract_all_paths(S, source_stop, min_departure_time,
                                        target_stop) if include_earliest_arrival else self.extract_paths_with_at_most_k_changes(
             S, source_stop, min_departure_time, target_stop, max_changes)
         paths = sorted(paths, key=lambda journey: journey[0][2], reverse=True)
+        
 
         for path_index, path in enumerate(paths):
             print("JOURNEY", path_index + 1)
