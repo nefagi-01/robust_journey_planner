@@ -7,3 +7,6 @@ path_data+trips.pickle filter=lfs diff=lfs merge=lfs -text
 ../data/connections_data.pickle filter=lfs diff=lfs merge=lfs -text
 ../data/stops.pickle filter=lfs diff=lfs merge=lfs -text
 ../data/trips.pickle filter=lfs diff=lfs merge=lfs -text
+/home/jovyan/work/final-assignment/data/connections_data.pickle filter=lfs diff=lfs merge=lfs -text
+/home/jovyan/work/final-assignment/data/stops.pickle filter=lfs diff=lfs merge=lfs -text
+/home/jovyan/work/final-assignment/data/trips.pickle filter=lfs diff=lfs merge=lfs -text
