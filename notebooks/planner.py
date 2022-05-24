@@ -32,7 +32,7 @@ def search_next_departure(stop_departures, time):
     return next_departure_index, next_profile_entry
 
 def search_last_connection(connections, max_arrival_time):
-    increasing_dep_times = [x['departure_time'] for x in connections[::-1]]
+    increasing_dep_times = [x[2] for x in connections[::-1]]
     
     i = bisect_right(increasing_dep_times, max_arrival_time)
     increasing_last_index = i - 1
@@ -86,7 +86,9 @@ class JourneyPlanner:
         self.stops, self.connections, self.trips, self.footpaths = timetable
 
     def get_query_connections(self, day, max_arrival_time):
-        return self.connections[day]
+        index_day = day + 5 # skip first 5 attributes from tuple
+        connections = [(connection[0], connection[1], connection[2], connection[3], connection[4]) for connection in self.connections if connection[index_day]]
+        return connections[search_last_connection(connections, max_arrival_time):]
 
     def CSA(self, day, target_stop, min_departure_time, max_arrival_time, max_changes, include_earliest_arrival):
         '''
@@ -196,6 +198,9 @@ class JourneyPlanner:
                                                                          connection)
             T[c_trip]['arrival_times'] = new_min_arrivals
             T[c_trip]['exit_connections'] = new_exit_connections
+        
+        # Delete list from memory
+        del connections
 
         return S
 
