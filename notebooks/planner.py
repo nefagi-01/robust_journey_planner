@@ -129,6 +129,7 @@ class JourneyPlanner:
                 break
 
             # Initialize exit connections of trip with the last temporal connection for this trip: after this trip, it is necessary to exit the line as it does not lead anywhere
+            # Otherwise, if the current connection leads to the target station, set this as exit connection: does not make sense to go somewhere else after arriving here for the subsequent connections
             if T[c_trip]['exit_connections'][0] is None or c_arr_stop == target_stop:
                 T[c_trip]['exit_connections'] = [connection] * max_changes
 
