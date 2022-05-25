@@ -96,3 +96,9 @@ class Journey:
         
     def get_dep_time(self):
         return self.links[0].dep_time
+    
+    def get_links(self):
+        return self.links
+    
+    def get_confidence(self):
+        return self.considence
