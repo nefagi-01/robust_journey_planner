@@ -26,9 +26,9 @@ class Link:
 
 
 class Trip(Link):
-    def __init__(self, dep_stop, arr_stop, dep_time, arr_time, trip_id, maximum_delay):
+    def __init__(self, dep_stop, arr_stop, dep_time, arr_time, trip, maximum_delay):
         super().__init__(dep_stop, arr_stop, dep_time, arr_time)
-        self.trip_id = trip_id
+        self.trip = trip
         self.confidence = self.compute_confidence(maximum_delay)
 
     def get_trip_id(self):
@@ -42,7 +42,7 @@ class Trip(Link):
         return 1.
 
     def __str__(self):
-        return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip_id['trip_short_name'],
+        return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip["trip_short_name"],
                                                                               datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'), self.arr_stop['stop_name'])
 
 
@@ -51,10 +51,10 @@ class Footpath(Link):
         super().__init__(dep_stop, arr_stop, dep_time, arr_time)
 
     def __str__(self):
-        return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated total time for moving inside stations of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time + CHANGE_TIME / 2).strftime('%H:%M:%S'),
+        return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated total time for moving inside stations of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
                                                                                                 self.dep_stop['stop_name'],
                                                                                                 self.arr_stop['stop_name'],
-                                                                                                datetime.utcfromtimestamp(self.arr_time - CHANGE_TIME / 2).strftime('%H:%M:%S'),
+                                                                                                datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'),
                                                                                                 CHANGE_TIME)
 
 
@@ -93,3 +93,6 @@ class Journey:
 
     def add_footpath(self, footpath):
         self.links.append(footpath)
+        
+    def get_dep_time(self):
+        return self.links[0].dep_time
