@@ -130,13 +130,14 @@ class JourneyPlanner:
 
             # Initialize exit connections of trip with the last temporal connection for this trip: after this trip, it is necessary to exit the line as it does not lead anywhere
             # Otherwise, if the current connection leads to the target station, set this as exit connection: does not make sense to go somewhere else after arriving here for the subsequent connections
-            if T[c_trip]['exit_connections'][0] is None or c_arr_stop == target_stop:
+            if T[c_trip]['exit_connections'][0] is None:# or c_arr_stop == target_stop:
                 T[c_trip]['exit_connections'] = [connection] * max_changes
+                
 
             # PHASE 1: FIND tau_c (arrival times given this connection)
 
-            # Arrival times by walk from c_arr_stop
-            tau_1 = np.ones(max_changes) * (c_arr_time if c_arr_stop == target_stop else c_arr_time + D[c_arr_stop] + CHANGE_TIME)
+            # Arrival times by walk from c_arr_stop / 0 if the arrival stop is target stop
+            tau_1 = np.ones(max_changes) * (c_arr_time if c_arr_stop == target_stop else c_arr_time + D[c_arr_stop])
 
             # Arrival times by continuing on the same trip
             tau_2 = T[c_trip]['arrival_times']
@@ -147,6 +148,7 @@ class JourneyPlanner:
 
             # Find minimum per number of changes between tau_1, tau_2 and tau_3
             tau_c = minimize(minimize(tau_1, tau_2), tau_3)
+            
 
             # PHASE 2: UPDATE S
 
@@ -188,17 +190,18 @@ class JourneyPlanner:
                         y, y_departure_connections, tau_c, connection, y_exit_connections,
                         T[c_trip]['exit_connections'])
                     S[f_dep_stop].insert(next_departure_index,
-                                         {'departure_time': c_dep_time - f_dur - CHANGE_TIME, 'arrival_times': new_min_arrivals,
+                                         {'departure_time': c_dep_time, 'arrival_times': new_min_arrivals,
                                           'enter_connections': new_enter_connections,
                                           'exit_connections': new_exit_connections})
 
-            # PHASE 3: UPDATE T
+        # PHASE 3: UPDATE T
 
-            new_min_arrivals, new_exit_connections = minimize_with_stops(T[c_trip]['arrival_times'],
-                                                                         T[c_trip]['exit_connections'], tau_c,
-                                                                         connection)
-            T[c_trip]['arrival_times'] = new_min_arrivals
-            T[c_trip]['exit_connections'] = new_exit_connections
+        new_min_arrivals, new_exit_connections = minimize_with_stops(T[c_trip]['arrival_times'],
+                                                                     T[c_trip]['exit_connections'], tau_c,
+                                                                     connection)
+        T[c_trip]['arrival_times'] = new_min_arrivals
+        T[c_trip]['exit_connections'] = new_exit_connections
+            
         
         # Delete list from memory
         del connections
@@ -206,10 +209,12 @@ class JourneyPlanner:
         return S
 
     def extract_paths_with_k_changes(self, S, source_stop, source_time, target_stop, k):
+        assert source_stop != target_stop
+        
+        paths = set()
+        
         profiles_source_stop = S[source_stop]
         first_departure_index, _ = search_next_departure(profiles_source_stop, source_time)
-
-        paths = set()
 
         for i in range(first_departure_index, len(profiles_source_stop)):
             profile_entry = profiles_source_stop[i]
@@ -219,11 +224,6 @@ class JourneyPlanner:
 
             # If it is not possible to reach target from here in the selected number of changes
             if enter_connection is not None:
-                
-                # If this connection DOES NOT start in the last reached station, we need a footpath 
-                if enter_connection[0] != source_stop:
-                    source_time += self.footpaths[enter_connection[0]][source_stop] + CHANGE_TIME
-                    
 
                 # If we cannot do more changes
                 if k == 0:
@@ -238,7 +238,16 @@ class JourneyPlanner:
                     
                     # If the budget of changes is not zero and the next stop is the arrival stop, we end
                     if next_source_stop == target_stop:
+                        print("wooops")
                         continue
+    
+                        
+                    # If enter_connections and exit_connections do not belong to the same trip, 
+                    if exit_connection[4] != enter_connection[4]:
+                        print("WHY")
+                        # Add to the next source time the duration of the footpath
+                        next_source_time += self.footpaths[exit_connection[0]][enter_connection[1]] + CHANGE_TIME
+                        
                     
                     paths_from_next = self.extract_paths_with_k_changes(S, next_source_stop, next_source_time,
                                                                         target_stop, k - 1)
@@ -248,8 +257,10 @@ class JourneyPlanner:
         return paths
 
     def extract_paths_with_at_most_k_changes(self, S, source_stop, source_time, target_stop, k):
-        return set().union(
+        paths = set().union(
             *[self.extract_paths_with_k_changes(S, source_stop, source_time, target_stop, k) for k in range(k + 1)])
+        print(paths)
+        return paths
 
     def extract_all_paths(self, S, source_stop, source_time, target_stop):
         profiles_source_stop = S[source_stop]
@@ -265,11 +276,6 @@ class JourneyPlanner:
                 # If it is not possible to reach target from here
                 if enter_connection is None:
                     continue
-                    
-                # If this connection DOES NOT start in the last reached station, we need a footpath 
-                if enter_connection[0] != source_stop:
-                    source_time += self.footpaths[enter_connection[0]][source_stop] + CHANGE_TIME
-                    
                 # If this connection or this line is directed to the target stop
                 if enter_connection[1] == target_stop or exit_connection[1] == target_stop:
                     paths.add(current_trip)
@@ -290,9 +296,15 @@ class JourneyPlanner:
 
         if path is None:
             return None
-
+        
+        print(path)
+    
         journey = Journey()
+        
+        assert len(path) % 2 == 0
         path_len = len(path) // 2
+        
+        
 
         # Add first link
         trip_start = path[0]
@@ -300,8 +312,8 @@ class JourneyPlanner:
         
         # Handle source_stop != first trip departure stop (=> add footpath from source_stop to first trip departure stop)  
         if source_stop != trip_start[0]:
-            footpath = Footpath(self.stops[source_stop], self.stops[trip_start[0]], trip_start[2] - self.footpaths[source_stop][trip_start[0]] - CHANGE_TIME,
-                                    self.footpaths[source_stop][trip_start[0]] + CHANGE_TIME)
+            footpath = Footpath(self.stops[source_stop], self.stops[trip_start[0]], trip_start[2] - self.footpaths[source_stop][trip_start[0]],
+                                    trip_start[2] + CHANGE_TIME)
             journey.add_footpath(footpath)
         
         
@@ -322,8 +334,8 @@ class JourneyPlanner:
 
             # If the last arrival stop is not the following departing stations, we need to walk from one stop to the other
             if trip_start[0] != previous_exit_connection[1]:
-                footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[trip_start[0]], previous_exit_connection[3],
-                                    self.footpaths[trip_start[0]][previous_exit_connection[1]] + CHANGE_TIME)
+                footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[trip_start[0]], previous_exit_connection[3] + CHANGE_TIME/2,
+                                    self.footpaths[trip_start[0]][previous_exit_connection[1]] - CHANGE_TIME/2)
                 journey.add_footpath(footpath)
 
             # Otherwise, we just need to change in the same station before the new link if the departure station is not
@@ -341,11 +353,19 @@ class JourneyPlanner:
 
             # Update previous exit connection for detecting footpaths
             previous_exit_connection = trip_end
+        print("NEW JOURNEY")
+        print(journey)
+        last_link = journey.get_links()[-1]
+        
+        if type(last_link) is Trip or type(last_link) is Footpath:
+            print(last_link.dep_stop)
             
         # Handle target_stop != last stop (=> add footpath from last station to destination)    
         if previous_exit_connection[1] != target_stop:
-            footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[target_stop], previous_exit_connection[3],
-                                    self.footpaths[target_stop][previous_exit_connection[1]] + CHANGE_TIME)
+            print(self.footpaths[target_stop])
+            print(previous_exit_connection[1])
+            footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[target_stop], previous_exit_connection[3] + CHANGE_TIME/2,
+                                    self.footpaths[target_stop][previous_exit_connection[1]] + previous_exit_connection[3] - CHANGE_TIME/2)
             journey.add_footpath(footpath)
         
         
@@ -371,10 +391,11 @@ class JourneyPlanner:
         journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time) for path in paths]
         
         # Search journeys of just one footpath
-        if source_stop in self.footpaths[target_stop]:
-            footpath_journey = Journey()
-            footpath_journey.add_footpath(Footpath(self.stops[source_stop], self.stops[target_stop], max_arrival_time - self.footpaths[target_stop][source_stop], max_arrival_time))
-            journeys.append(footpath_journey)
+        if target_stop in self.footpaths:
+            if source_stop in self.footpaths[target_stop]:
+                footpath_journey = Journey()
+                footpath_journey.add_footpath(Footpath(self.stops[source_stop], self.stops[target_stop], max_arrival_time - self.footpaths[target_stop][source_stop], max_arrival_time))
+                journeys.append(footpath_journey)
             
         # Sort journeys by departure time
         journeys = sorted(journeys, key=lambda journey: journey.get_dep_time(), reverse=True)

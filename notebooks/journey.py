@@ -46,16 +46,18 @@ class Trip(Link):
                                                                               datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'), self.arr_stop['stop_name'])
 
 
-class Footpath(Link):
-    def __init__(self, dep_stop, arr_stop, dep_time, arr_time):
-        super().__init__(dep_stop, arr_stop, dep_time, arr_time)
+class Footpath:
+    def __init__(self, dep_stop, arr_stop, dep_time, duration):
+        self.dep_stop = dep_stop
+        self.arr_stop = arr_stop
+        self.dep_time = dep_time
+        self.duration = duration
 
     def __str__(self):
-        return "At {}, walk from station {} to station {}, with expected arrival at {} (estimated total time for moving inside stations of {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
+        return "At {}, walk from station {} to station {} (estimated maximum duration: {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
                                                                                                 self.dep_stop['stop_name'],
                                                                                                 self.arr_stop['stop_name'],
-                                                                                                datetime.utcfromtimestamp(self.arr_time).strftime('%H:%M:%S'),
-                                                                                                CHANGE_TIME)
+                                                                                                self.duration)
 
 
 class Change:
@@ -96,3 +98,9 @@ class Journey:
         
     def get_dep_time(self):
         return self.links[0].dep_time
+    
+    def get_links(self):
+        return self.links
+    
+    def get_confidence(self):
+        return self.considence
