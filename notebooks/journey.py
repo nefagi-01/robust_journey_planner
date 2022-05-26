@@ -78,6 +78,7 @@ class Journey:
         self.links = []
         self.confidence = 1.
         self.num_connections = 0
+        self.total_duration_footpaths = 0
 
     def __len__(self):
         return self.num_connections
@@ -95,6 +96,7 @@ class Journey:
 
     def add_footpath(self, footpath):
         self.links.append(footpath)
+        self.total_duration_footpaths += footpath.duration
         
     def get_dep_time(self):
         return self.links[0].dep_time
@@ -104,3 +106,9 @@ class Journey:
     
     def get_confidence(self):
         return self.considence
+    
+    def get_num_connections(self):
+        return self.num_connections
+    
+    def get_total_duration_footpaths(self):
+        return self.total_duration_footpaths

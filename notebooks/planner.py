@@ -378,10 +378,11 @@ class JourneyPlanner:
             journeys.append(footpath_journey)
             
         # Sort journeys by departure time
-        journeys = sorted(journeys, key=lambda journey: journey.get_dep_time(), reverse=True)
+        journeys = sorted(journeys, key=lambda journey: (-journey.get_dep_time(), -journey.get_confidence(), journey.get_total_duration_footpaths(), journey.get_num_connections()))
         
         for i, journey in enumerate(journeys):
             print("JOURNEY", i + 1)
+            print("DEP",  journey.get_dep_time(), "FOOT",  journey.get_total_duration_footpaths(), "CONN", journey.get_num_connections())
             print(str(journey))
             
         return journeys
