@@ -352,6 +352,7 @@ class JourneyPlanner:
         return journey
     
     def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, max_changes=None):
+        assert max_arrival_time > min_departure_time
 
         include_earliest_arrival = max_changes is None
 
@@ -373,7 +374,7 @@ class JourneyPlanner:
         # Search journeys of just one footpath
         if source_stop in self.footpaths[target_stop]:
             footpath_journey = Journey()
-            footpath_journey.add_footpath(Footpath(self.stops[source_stop], self.stops[target_stop], max_arrival_time - self.footpaths[target_stop][source_stop], max_arrival_time))
+            footpath_journey.add_footpath(Footpath(self.stops[source_stop], self.stops[target_stop], max_arrival_time - self.footpaths[target_stop][source_stop], self.footpaths[target_stop][source_stop]))
             journeys.append(footpath_journey)
             
         # Sort journeys by departure time
