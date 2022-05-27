@@ -386,13 +386,14 @@ class JourneyPlanner:
     def compute_confidence(self, dep_stop, arr_stop, weekday, maximum_delay):
         dep_stop_id = dep_stop['stop_id']
         arr_stop_id = arr_stop['stop_id']
-        result = [el for el in self.confidences if ((el[0]==dep_stop_id) & (el[1] == arr_stop_id) & (el[2] == weekday) & (el[3] == maximum_delay))]
-        if len(result) > 0:
-            return result[0][-1]
-        return 1.
+        if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id]:
+            result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] == maximum_delay)]
+            if len(result) > 0:
+                return result[0][-1]
+        return 0.
     
     
-    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, max_changes=None, verbose=False):
+    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, verbose=False):
         assert max_arrival_time > min_departure_time
 
         include_earliest_arrival = max_changes is None
@@ -419,7 +420,9 @@ class JourneyPlanner:
             print(f"found {len(paths)} paths.")
             print("Starting processing of paths...", end=' ')
             
-        journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time, verbose, day) for path in paths]
+        full_journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time, verbose, day) for path in paths]
+        
+        journeys = list(filter(lambda journey: journey.confidence>=minimum_confidence, full_journeys))
         
         # Search journeys of just one footpath
         if source_stop in self.footpaths[target_stop]:
@@ -432,7 +435,7 @@ class JourneyPlanner:
             print("Starting sorting of paths...")
             
         # Sort journeys by departure time
-        journeys = sorted(journeys, key=lambda journey: (-journey.get_dep_time(), -journey.get_confidence(), journey.get_total_duration_footpaths(), journey.get_num_connections()))
+        journeys = sorted(journeys, key=lambda journey: (-journey.get_dep_time(), journey.get_total_duration_footpaths(), journey.get_num_connections(), -journey.get_confidence()))
         
         if verbose:
             print("End of computation.")
