@@ -26,20 +26,16 @@ class Link:
 
 
 class Trip(Link):
-    def __init__(self, dep_stop, arr_stop, dep_time, arr_time, trip, maximum_delay):
+    def __init__(self, dep_stop, arr_stop, dep_time, arr_time, trip, confidence):
         super().__init__(dep_stop, arr_stop, dep_time, arr_time)
         self.trip = trip
-        self.confidence = self.compute_confidence(maximum_delay)
+        self.confidence = confidence
 
     def get_trip_id(self):
         return self.trip_id
 
     def get_confidence(self):
         return self.confidence
-
-    def compute_confidence(self, maximum_delay):
-        # TODO
-        return 1.
 
     def __str__(self):
         return "At {}, take the line {} with arrival at time {} in {}.".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'), self.trip["trip_short_name"],

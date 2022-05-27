@@ -83,7 +83,7 @@ def minimize_with_enter_exit_connections(old_arrivals, old_enter_connections, ta
 
 class JourneyPlanner:
     def __init__(self, timetable):
-        self.stops, self.connections, self.trips, self.footpaths = timetable
+        self.stops, self.connections, self.trips, self.footpaths, self.confidences = timetable
 
     def get_query_connections(self, day, max_arrival_time):
         index_day = day + 5 # skip first 5 attributes from tuple
@@ -314,7 +314,7 @@ class JourneyPlanner:
 
         return paths
 
-    def process_path(self, source_stop, target_stop, path, maximum_arrival_time, verbose):
+    def process_path(self, source_stop, target_stop, path, maximum_arrival_time, verbose, weekday):
         '''
             From paths (list of pairs of enter_connection, exit_connections) to journeys (list of links)
         '''
@@ -340,7 +340,7 @@ class JourneyPlanner:
         next_departure_time = path[2][2] if len(path) > 2 else maximum_arrival_time
         maximum_delay = next_departure_time - trip_end[3]
         trip = Trip(dep_stop=self.stops[trip_start[0]], arr_stop=self.stops[trip_end[1]], dep_time=trip_start[2], arr_time=trip_end[3],
-                        trip=self.trips[trip_start[4]], maximum_delay=maximum_delay)
+                        trip=self.trips[trip_start[4]], confidence=self.compute_confidence(self.stops[trip_start[0]], self.stops[trip_end[1]], weekday, maximum_delay))
         journey.add_trip(trip)
 
         # Update previous exit connection for detecting footpaths
@@ -368,7 +368,7 @@ class JourneyPlanner:
             next_departure_time = path[(i + 1) * 2][2] if len(path) > (i + 1) * 2 else maximum_arrival_time
             maximum_delay = next_departure_time - trip_end[3]
             trip = Trip(dep_stop=self.stops[trip_start[0]], arr_stop=self.stops[trip_end[1]], dep_time=trip_start[2], arr_time=trip_end[3],
-                        trip=self.trips[trip_start[4]], maximum_delay=maximum_delay)
+                        trip=self.trips[trip_start[4]], confidence=self.compute_confidence(self.stops[trip_start[0]], self.stops[trip_end[1]], weekday+1, maximum_delay))
             journey.add_trip(trip)
 
             # Update previous exit connection for detecting footpaths
@@ -382,6 +382,15 @@ class JourneyPlanner:
         
         
         return journey
+    
+    def compute_confidence(self, dep_stop, arr_stop, weekday, maximum_delay):
+        dep_stop_id = dep_stop['stop_id']
+        arr_stop_id = arr_stop['stop_id']
+        result = [el for el in self.confidences if ((el[0]==dep_stop_id) & (el[1] == arr_stop_id) & (el[2] == weekday) & (el[3] == maximum_delay))]
+        if len(result) > 0:
+            return result[0][-1]
+        return 1.
+    
     
     def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, max_changes=None, verbose=False):
         assert max_arrival_time > min_departure_time
@@ -410,7 +419,7 @@ class JourneyPlanner:
             print(f"found {len(paths)} paths.")
             print("Starting processing of paths...", end=' ')
             
-        journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time, verbose) for path in paths]
+        journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time, verbose, day) for path in paths]
         
         # Search journeys of just one footpath
         if source_stop in self.footpaths[target_stop]:
@@ -429,3 +438,5 @@ class JourneyPlanner:
             print("End of computation.")
             
         return journeys
+    
+    
