@@ -130,9 +130,10 @@ class JourneyPlanner:
 
             # Initialize exit connections of trip with the last temporal connection for this trip: after this trip, it is necessary to exit the line as it does not lead anywhere
             # Otherwise, if the current connection leads to the target station, set this as exit connection: does not make sense to go somewhere else after arriving here for the subsequent connections
-            if T[c_trip]['exit_connections'][0] is None or c_arr_stop == target_stop:
+            if T[c_trip]['exit_connections'][0] is None:
                 T[c_trip]['exit_connections'] = [connection] * max_changes
-
+                    
+            
             # PHASE 1: FIND tau_c (arrival times given this connection)
 
             # Arrival times by walk from c_arr_stop
@@ -147,8 +148,17 @@ class JourneyPlanner:
 
             # Find minimum per number of changes between tau_1, tau_2 and tau_3
             tau_c = minimize(minimize(tau_1, tau_2), tau_3)
+            
+            # PHASE 2: UPDATE T
 
-            # PHASE 2: UPDATE S
+            new_min_arrivals, new_exit_connections = minimize_with_stops(T[c_trip]['arrival_times'],
+                                                                         T[c_trip]['exit_connections'], tau_c,
+                                                                         connection)
+            T[c_trip]['arrival_times'] = new_min_arrivals
+            T[c_trip]['exit_connections'] = new_exit_connections
+
+        
+            # PHASE 3: UPDATE S
 
             # arrivals of earliest departure after c_dep_time from stop c_dep_stop
             next_departure_index, next_profile_entry = search_next_departure(S[c_dep_stop], c_dep_time)
@@ -162,7 +172,7 @@ class JourneyPlanner:
                                                                                                                  y_exit_connections,
                                                                                                                  T[
                                                                                                                      c_trip][
-                                                                                                                     'exit_connections'])
+                                                                                                                     'exit_connections'] if c_trip in T else connection * max_changes)
 
             # If the new candidate profile ix not dominated
             if not np.array_equal(y, new_min_arrivals):
@@ -171,6 +181,7 @@ class JourneyPlanner:
                                      {'departure_time': c_dep_time, 'arrival_times': new_min_arrivals,
                                       'enter_connections': new_enter_connections,
                                       'exit_connections': new_exit_connections})
+                
                 
                 # If c_dep_stop is not reachable from any other stop
                 if c_dep_stop not in footpaths:
@@ -192,30 +203,34 @@ class JourneyPlanner:
                                           'enter_connections': new_enter_connections,
                                           'exit_connections': new_exit_connections})
 
-            # PHASE 3: UPDATE T
-
-            new_min_arrivals, new_exit_connections = minimize_with_stops(T[c_trip]['arrival_times'],
-                                                                         T[c_trip]['exit_connections'], tau_c,
-                                                                         connection)
-            T[c_trip]['arrival_times'] = new_min_arrivals
-            T[c_trip]['exit_connections'] = new_exit_connections
+            
         
+            
         # Delete list from memory
         del connections
 
         return S
 
-    def extract_paths_with_k_changes(self, S, source_stop, source_time, target_stop, k):
+    def extract_paths_with_k_changes(self, S, source_stop, source_time, target_stop, k, verbose, query_source_stop):
         profiles_source_stop = S[source_stop]
         first_departure_index, _ = search_next_departure(profiles_source_stop, source_time)
-
-        paths = set()
-
+            
+        paths = set()       
+        scanned_trips = set()
+        
         for i in range(first_departure_index, len(profiles_source_stop)):
             profile_entry = profiles_source_stop[i]
             enter_connection = profile_entry['enter_connections'][k]
             exit_connection = profile_entry['exit_connections'][k]
             current_trip = (enter_connection, exit_connection)
+        
+            # If trip already scanned, skip
+            if current_trip in scanned_trips: 
+                continue
+            
+            scanned_trips.add(current_trip)
+            
+            
 
             # If it is not possible to reach target from here in the selected number of changes
             if enter_connection is not None:
@@ -228,40 +243,55 @@ class JourneyPlanner:
                 # If we cannot do more changes
                 if k == 0:
                     # If this connection or this line is directed to the target stop
-                    if enter_connection[1] == target_stop or exit_connection[1] == target_stop:
+                    if enter_connection[1] == target_stop or exit_connection[1] == target_stop or exit_connection[1] in self.footpaths[target_stop]:
                         paths.add(current_trip)
+
 
                 # If we can do more changes and we need to exit the line at some point after this connection
                 else:
                     next_source_stop = exit_connection[1]
                     next_source_time = exit_connection[3]
                     
-                    # If the budget of changes is not zero and the next stop is the arrival stop, we end
-                    if next_source_stop == target_stop:
+                    # If the budget is not zero and we can arrive at destination, skip this
+                    if enter_connection[1] == target_stop or exit_connection[1] == target_stop or exit_connection[1] in self.footpaths[target_stop]:
                         continue
                     
+                    
                     paths_from_next = self.extract_paths_with_k_changes(S, next_source_stop, next_source_time,
-                                                                        target_stop, k - 1)
-                    paths_from_current = [current_trip + path for path in paths_from_next]
+                                                                        target_stop, k - 1, verbose, query_source_stop)
+                        
+                        
+                    # Add the paths (ONLY IF the next trip has a different trip_id from the current trip, otherwise it would be re-entering the same line!)
+                    paths_from_current = [current_trip + path for path in paths_from_next if path[0][4] != exit_connection[4]]
                     paths.update(paths_from_current)
+                    
 
         return paths
 
-    def extract_paths_with_at_most_k_changes(self, S, source_stop, source_time, target_stop, k):
+    def extract_paths_with_at_most_k_changes(self, S, source_stop, source_time, target_stop, k, verbose):
         return set().union(
-            *[self.extract_paths_with_k_changes(S, source_stop, source_time, target_stop, k) for k in range(k + 1)])
+            *[self.extract_paths_with_k_changes(S, source_stop, source_time, target_stop, k, verbose, source_stop) for k in range(k + 1)])
 
-    def extract_all_paths(self, S, source_stop, source_time, target_stop):
+    def extract_all_paths(self, S, source_stop, source_time, target_stop, verbose):
         profiles_source_stop = S[source_stop]
         first_departure_index, _ = search_next_departure(profiles_source_stop, source_time)
 
         paths = set()
+        scanned_trips = set()
 
         for i in range(first_departure_index, len(profiles_source_stop)):
             profile_entry = profiles_source_stop[i]
             enter_exit_connections = set(zip(profile_entry['enter_connections'], profile_entry['exit_connections']))
+            
             for current_trip in enter_exit_connections:
                 enter_connection, exit_connection = current_trip
+                
+                # If trip already scanned, skip
+                if current_trip in scanned_trips: 
+                    continue
+            
+                scanned_trips.add(current_trip)
+                
                 # If it is not possible to reach target from here
                 if enter_connection is None:
                     continue
@@ -271,19 +301,20 @@ class JourneyPlanner:
                     source_time += self.footpaths[enter_connection[0]][source_stop] + CHANGE_TIME
                     
                 # If this connection or this line is directed to the target stop
-                if enter_connection[1] == target_stop or exit_connection[1] == target_stop:
+                if enter_connection[1] == target_stop or exit_connection[1] == target_stop or exit_connection[1] in self.footpaths[target_stop]:
                     paths.add(current_trip)
+                    
                 # If we need to exit the line at some point after this connection
                 else:
                     next_source_stop = exit_connection[1]
                     next_source_time = exit_connection[3]
                     paths_from_next = self.extract_all_paths(S, next_source_stop, next_source_time, target_stop)
-                    paths_from_current = [current_trip + path for path in paths_from_next]
+                    paths_from_current = [current_trip + path for path in paths_from_next if path[0][4] != exit_connection[4]]
                     paths.update(paths_from_current)
 
         return paths
 
-    def process_path(self, source_stop, target_stop, path, maximum_arrival_time):
+    def process_path(self, source_stop, target_stop, path, maximum_arrival_time, verbose):
         '''
             From paths (list of pairs of enter_connection, exit_connections) to journeys (list of links)
         '''
@@ -322,13 +353,14 @@ class JourneyPlanner:
 
             # If the last arrival stop is not the following departing stations, we need to walk from one stop to the other
             if trip_start[0] != previous_exit_connection[1]:
+
                 footpath = Footpath(self.stops[previous_exit_connection[1]], self.stops[trip_start[0]], previous_exit_connection[3],
                                     self.footpaths[trip_start[0]][previous_exit_connection[1]] + CHANGE_TIME)
                 journey.add_footpath(footpath)
 
             # Otherwise, we just need to change in the same station before the new link if the departure station is not
             # the first one
-            else:
+            else:                    
                 change = Change(self.stops[trip_start[0]], self.trips[previous_exit_connection[4]], self.trips[trip_start[4]])
                 journey.add_change(change)
 
@@ -351,7 +383,7 @@ class JourneyPlanner:
         
         return journey
     
-    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, max_changes=None):
+    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, max_changes=None, verbose=False):
         assert max_arrival_time > min_departure_time
 
         include_earliest_arrival = max_changes is None
@@ -359,17 +391,26 @@ class JourneyPlanner:
         # If no limit for max_changes, set an arbitrary number for the algo: even with this, we can still have paths of more than max_changes changes
         if max_changes is None:
             max_changes = 10
-
+            
+        if verbose:
+            print("Starting execution of CSA...")
         # Run CSA
         S = self.CSA(day=day, target_stop=target_stop, min_departure_time=min_departure_time, max_arrival_time=max_arrival_time, max_changes=max_changes, include_earliest_arrival=include_earliest_arrival)
         
+        if verbose:
+            print("Starting extraction of paths...", end=' ')
+            
         # Extract the paths
         paths = self.extract_all_paths(S, source_stop, min_departure_time,
-                                       target_stop) if include_earliest_arrival else self.extract_paths_with_at_most_k_changes(
-            S, source_stop, min_departure_time, target_stop, max_changes)
+                                       target_stop, verbose) if include_earliest_arrival else self.extract_paths_with_at_most_k_changes(
+            S, source_stop, min_departure_time, target_stop, max_changes, verbose)
         paths = sorted(paths, key=lambda journey: journey[0][2], reverse=True)
         
-        journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time) for path in paths]
+        if verbose:
+            print(f"found {len(paths)} paths.")
+            print("Starting processing of paths...", end=' ')
+            
+        journeys = [self.process_path(source_stop, target_stop, path, max_arrival_time, verbose) for path in paths]
         
         # Search journeys of just one footpath
         if source_stop in self.footpaths[target_stop]:
@@ -377,12 +418,14 @@ class JourneyPlanner:
             footpath_journey.add_footpath(Footpath(self.stops[source_stop], self.stops[target_stop], max_arrival_time - self.footpaths[target_stop][source_stop], self.footpaths[target_stop][source_stop]))
             journeys.append(footpath_journey)
             
+        if verbose:
+            print(f"processed {len(journeys)} journeys.")
+            print("Starting sorting of paths...")
+            
         # Sort journeys by departure time
         journeys = sorted(journeys, key=lambda journey: (-journey.get_dep_time(), -journey.get_confidence(), journey.get_total_duration_footpaths(), journey.get_num_connections()))
         
-        for i, journey in enumerate(journeys):
-            print("JOURNEY", i + 1)
-            print("DEP",  journey.get_dep_time(), "FOOT",  journey.get_total_duration_footpaths(), "CONN", journey.get_num_connections())
-            print(str(journey))
+        if verbose:
+            print("End of computation.")
             
         return journeys

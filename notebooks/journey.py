@@ -105,7 +105,7 @@ class Journey:
         return self.links
     
     def get_confidence(self):
-        return self.considence
+        return self.confidence
     
     def get_num_connections(self):
         return self.num_connections
