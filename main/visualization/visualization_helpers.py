@@ -1,5 +1,5 @@
 from datetime import datetime
-from planner import JourneyPlanner
+from algorithm.planner import JourneyPlanner
 from collections import defaultdict
 import pickle
 import ipywidgets as widgets
@@ -11,7 +11,7 @@ import plotly.express as px
 import plotly
 import matplotlib.pyplot as plt
 import pickle
-from journey import *
+from algorithm.journey import *
 
 def visualize_map_scattermapbox(journey, routes, plot_number = 0):
     color_dict = {}

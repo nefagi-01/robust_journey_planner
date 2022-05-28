@@ -1,7 +1,7 @@
 from collections import defaultdict
 import numpy as np
 from datetime import datetime
-from journey import *
+from .journey import *
 import bisect
 
 # CSA HELPERS
@@ -395,7 +395,8 @@ class JourneyPlanner:
     
     def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, verbose=False):
         assert max_arrival_time > min_departure_time
-
+        assert source_stop != target_stop
+        
         include_earliest_arrival = max_changes is None
 
         # If no limit for max_changes, set an arbitrary number for the algo: even with this, we can still have paths of more than max_changes changes
