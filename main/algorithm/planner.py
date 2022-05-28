@@ -390,7 +390,7 @@ class JourneyPlanner:
             result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] >= maximum_delay / 60.)]
             if len(result) > 0:
                 return result[0][-1]
-        return 0.
+        return 1.
     
     
     def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, verbose=False):
