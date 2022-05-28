@@ -1,7 +1,7 @@
 from collections import defaultdict
 import numpy as np
 from datetime import datetime
-from journey import *
+from .journey import *
 import bisect
 
 # CSA HELPERS
