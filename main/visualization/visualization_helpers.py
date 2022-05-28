@@ -84,7 +84,7 @@ def visualize_map_scattermapbox(journey, routes, plot_number = 0):
         
         dep_time_date = datetime.fromtimestamp(x.dep_time)
         arr_time_date = datetime.fromtimestamp(x.arr_time) if isinstance(x, Trip) else datetime.fromtimestamp(x.dep_time + x.duration)
-        hover_string = f'station name: {x.dep_stop["stop_name"]} <br>departure time: {dep_time_date.hour}:{dep_time_date.minute} <extra></extra>'
+        hover_string = f'station name: {x.dep_stop["stop_name"]} <br>departure time: {dep_time_date.hour}:{dep_time_date.minute if dep_time_date.minute >9 else "0"+str(dep_time_date.minute)} <extra></extra>'
         
         
         fig.add_trace(go.Scattermapbox(mode = "lines",
@@ -109,9 +109,10 @@ def visualize_map_scattermapbox(journey, routes, plot_number = 0):
                                         lat = [x.arr_stop['stop_lat']],
                                         showlegend=False,
                                         marker = {'size': 12,'color': color_dict[transport_type]},
-                                        hovertemplate = f'station name: {x.dep_stop["stop_name"]} <br>arrival time: {arr_time_date.hour}:{arr_time_date.minute} <extra></extra>'))
+                                        hovertemplate = f'station name: {x.dep_stop["stop_name"]} <br>arrival time: {arr_time_date.hour}:{arr_time_date.minute if arr_time_date.minute >9 else "0"+str(arr_time_date.minute)} <extra></extra>'))
 
 #     plotly.offline.plot(fig)               #uncomment this if you want the map to open also in a new tab of the browser
     fig.show()
+    print(journey)
 
    
