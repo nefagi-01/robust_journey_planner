@@ -50,10 +50,15 @@ class Footpath:
         self.duration = duration
 
     def __str__(self):
-        return "At {}, walk from station {} to station {} (estimated maximum duration: {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
+        if self.dep_stop['stop_name'] == self.arr_stop['stop_name']:
+            message = "At {}, walk from the previous platform to the platform of the following line (estimated maximum duration: {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
+                                                                                                self.duration)
+        else:
+            message = "At {}, walk from station {} to station {} (estimated maximum duration: {} seconds).".format(datetime.utcfromtimestamp(self.dep_time).strftime('%H:%M:%S'),
                                                                                                 self.dep_stop['stop_name'],
                                                                                                 self.arr_stop['stop_name'],
                                                                                                 self.duration)
+        return message
 
 
 class Change:
