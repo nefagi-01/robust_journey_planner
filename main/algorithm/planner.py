@@ -240,8 +240,8 @@ class JourneyPlanner:
                 
                 # If paths have been found and the next connections make you wait too much (i.e., the departure time is way after the arrival time in this station) or if too many paths have already been explored, 
                 # there is no point in "exploring" more paths
-                # 
-                if paths and enter_connection[2] - source_time > maximum_waiting_time:
+                # We do this only if this is not the first connection: otherwise it is okay to wait more.
+                if not first_connection and paths and enter_connection[2] - source_time > maximum_waiting_time:
                     return paths
                 
                 # If this connection DOES NOT start in the last reached station, we need a footpath 
@@ -306,7 +306,7 @@ class JourneyPlanner:
                     continue
                     
                 # If paths have been found and the next connections make you wait too much (i.e., the departure time is way after the arrival time in this station), there is no point in "exploring" these paths
-                if paths and enter_connection[2] - source_time > maximum_waiting_time:
+                if not first_connection and paths and enter_connection[2] - source_time > maximum_waiting_time:
                     return paths
                     
                 # If this connection DOES NOT start in the last reached station, we need a footpath 
