@@ -211,7 +211,7 @@ class JourneyPlanner:
 
         return S
 
-    def extract_paths_with_k_changes(self, S, source_stop, source_time, target_stop, k, verbose, query_source_stop):
+    def extract_paths_with_k_changes(self, S, source_stop, source_time, target_stop, k, verbose, maximum_waiting_time):
         profiles_source_stop = S[source_stop]
         first_departure_index, _ = search_next_departure(profiles_source_stop, source_time)
             
@@ -229,11 +229,13 @@ class JourneyPlanner:
                 continue
             
             scanned_trips.add(current_trip)
-            
-            
 
             # If it is not possible to reach target from here in the selected number of changes
             if enter_connection is not None:
+                
+                # If paths have been found and the next connections make you wait too much (i.e., the departure time is way after the arrival time in this station), there is no point in "exploring" these paths
+                if paths and enter_connection[2] - source_time > maximum_waiting_time:
+                    return paths
                 
                 # If this connection DOES NOT start in the last reached station, we need a footpath 
                 if enter_connection[0] != source_stop:
@@ -258,7 +260,7 @@ class JourneyPlanner:
                     
                     
                     paths_from_next = self.extract_paths_with_k_changes(S, next_source_stop, next_source_time,
-                                                                        target_stop, k - 1, verbose, query_source_stop)
+                                                                        target_stop, k - 1, verbose, maximum_waiting_time)
                         
                         
                     # Add the paths (ONLY IF the next trip has a different trip_id from the current trip, otherwise it would be re-entering the same line!)
@@ -268,11 +270,11 @@ class JourneyPlanner:
 
         return paths
 
-    def extract_paths_with_at_most_k_changes(self, S, source_stop, source_time, target_stop, k, verbose):
+    def extract_paths_with_at_most_k_changes(self, S, source_stop, source_time, target_stop, k, verbose, maximum_waiting_time):
         return set().union(
-            *[self.extract_paths_with_k_changes(S, source_stop, source_time, target_stop, k, verbose, source_stop) for k in range(k + 1)])
+            *[self.extract_paths_with_k_changes(S, source_stop, source_time, target_stop, k, verbose, maximum_waiting_time) for k in range(k + 1)])
 
-    def extract_all_paths(self, S, source_stop, source_time, target_stop, verbose):
+    def extract_all_paths(self, S, source_stop, source_time, target_stop, verbose, maximum_waiting_time):
         profiles_source_stop = S[source_stop]
         first_departure_index, _ = search_next_departure(profiles_source_stop, source_time)
 
@@ -284,7 +286,7 @@ class JourneyPlanner:
             enter_exit_connections = set(zip(profile_entry['enter_connections'], profile_entry['exit_connections']))
             
             for current_trip in enter_exit_connections:
-                enter_connection, exit_connection = current_trip
+                enter_connection, exit_connection = current_trip        
                 
                 # If trip already scanned, skip
                 if current_trip in scanned_trips: 
@@ -295,6 +297,10 @@ class JourneyPlanner:
                 # If it is not possible to reach target from here
                 if enter_connection is None:
                     continue
+                    
+                # If paths have been found and the next connections make you wait too much (i.e., the departure time is way after the arrival time in this station), there is no point in "exploring" these paths
+                if paths and enter_connection[2] - source_time > maximum_waiting_time:
+                    return paths
                     
                 # If this connection DOES NOT start in the last reached station, we need a footpath 
                 if enter_connection[0] != source_stop:
@@ -393,7 +399,7 @@ class JourneyPlanner:
         return 0.
     
     
-    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, verbose=False):
+    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, maximum_waiting_time = 600, verbose=False):
         assert max_arrival_time > min_departure_time
         assert source_stop != target_stop
         
@@ -413,8 +419,8 @@ class JourneyPlanner:
             
         # Extract the paths
         paths = self.extract_all_paths(S, source_stop, min_departure_time,
-                                       target_stop, verbose) if include_earliest_arrival else self.extract_paths_with_at_most_k_changes(
-            S, source_stop, min_departure_time, target_stop, max_changes, verbose)
+                                       target_stop, verbose, maximum_waiting_time) if include_earliest_arrival else self.extract_paths_with_at_most_k_changes(
+            S, source_stop, min_departure_time, target_stop, max_changes, verbose, maximum_waiting_time)
         paths = sorted(paths, key=lambda journey: journey[0][2], reverse=True)
         
         if verbose:
