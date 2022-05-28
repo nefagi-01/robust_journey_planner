@@ -5,9 +5,10 @@ from .journey import *
 import bisect
 
 # CONSTANT
-AVERAGE_CONFIDENCE = 0.815
-VARIANCE_CONFIDENCE = 0.05
-WAIT_TIME_FOR_NEXT_TRIP = 60*5
+AVERAGE_CONFIDENCE = 0.95
+VARIANCE_CONFIDENCE = 0.14
+THRESHOLD_CONFIDENCE_PERCENTILE = 5
+WAIT_TIME_FOR_NEXT_TRIP = 60*10
 
 # CSA HELPERS
 
@@ -89,6 +90,8 @@ def minimize_with_enter_exit_connections(old_arrivals, old_enter_connections, ta
 class JourneyPlanner:
     def __init__(self, timetable):
         self.stops, self.connections, self.trips, self.footpaths, self.confidences = timetable
+        self.count__tot_confidence_stations = 0
+        self.count_missing_confidence_stations = 0
 
     def get_query_connections(self, day, max_arrival_time):
         index_day = day + 5 # skip first 5 attributes from tuple
@@ -408,16 +411,27 @@ class JourneyPlanner:
     def compute_confidence(self, dep_stop, arr_stop, weekday, maximum_delay):
         dep_stop_id = dep_stop['stop_id']
         arr_stop_id = arr_stop['stop_id']
+        self.count_tot_confidence_stations +=1
+        print(dep_stop, arr_stop, weekday, '\n')
         if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id]:
             result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] >= maximum_delay / 60.)]
             if len(result) > 0:
-                return result[0][-1]
-        return  1 / (1 + np.exp(- np.random.normal(AVERAGE_CONFIDENCE, VARIANCE_CONFIDENCE, 1)))
+                return min(result, key=lambda x:x[1])[2]
+            else: 
+                return 1.
+        else:
+            self.count_missing_confidence_stations +=1
+            if maximum_delay > THRESHOLD_CONFIDENCE_PERCENTILE:
+                return 1.
+            else:
+                return  1 / (1 + np.exp(- np.random.normal(AVERAGE_CONFIDENCE, VARIANCE_CONFIDENCE, 1)))
     
     
     def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, maximum_waiting_time = 600, verbose=False):
         assert max_arrival_time > min_departure_time
         assert source_stop != target_stop
+        self.count_missing_confidence_stations = 0
+        self.count_tot_confidence_stations = 0
         
         include_earliest_arrival = max_changes is None
 
@@ -462,6 +476,7 @@ class JourneyPlanner:
         
         if verbose:
             print("End of computation.")
+            print("Missing confidence stations", self.count_missing_confidence_stations/self.count_tot_confidence_stations if self.count_tot_confidence_stations != 0 else 0)
             
         return journeys
     
