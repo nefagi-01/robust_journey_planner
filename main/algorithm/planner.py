@@ -7,6 +7,7 @@ import bisect
 # CONSTANT
 AVERAGE_CONFIDENCE = 0.815
 VARIANCE_CONFIDENCE = 0.05
+WAIT_TIME_FOR_NEXT_TRIP = 60*5
 
 # CSA HELPERS
 
@@ -222,32 +223,40 @@ class JourneyPlanner:
         paths = set()       
         scanned_trips = set()
         
+        if first_connection:
+            profiles_indices = reversed(range(first_departure_index, len(profiles_source_stop)))
+        else:
+            time = source_time
+        
+        i = first_departure_index
+        
         # Search from the latest possible departure time if this is the beginning of the travel
-        for i in (reversed(range(first_departure_index, len(profiles_source_stop))) if first_connection else range(first_departure_index, len(profiles_source_stop))):
+        while i < len(profiles_source_stop) - 1:
             profile_entry = profiles_source_stop[i]
             enter_connection = profile_entry['enter_connections'][k]
             exit_connection = profile_entry['exit_connections'][k]
             current_trip = (enter_connection, exit_connection)
+            
+            if first_connection: 
+                i += 1
         
             # If trip already scanned, skip
             if current_trip in scanned_trips: 
+                if not first_connection:
+                    time += WAIT_TIME_FOR_NEXT_TRIP / 2
+                    i, _ = search_next_departure(profiles_source_stop, time)
                 continue
+                
+            if not first_connection:
+                time += WAIT_TIME_FOR_NEXT_TRIP
+                i, _ = search_next_departure(profiles_source_stop, time)
             
             scanned_trips.add(current_trip)
 
             # If it is not possible to reach target from here in the selected number of changes
             if enter_connection is not None:
-                
-                # If paths have been found and the next connections make you wait too much (i.e., the departure time is way after the arrival time in this station) or if too many paths have already been explored, 
-                # there is no point in "exploring" more paths
-                # We do this only if this is not the first connection: otherwise it is okay to wait more.
-                if not first_connection and paths and enter_connection[2] - source_time > maximum_waiting_time:
-                    return paths
-                
-                # If this connection DOES NOT start in the last reached station, we need a footpath 
-                if enter_connection[0] != source_stop:
-                    source_time += self.footpaths[enter_connection[0]][source_stop] + CHANGE_TIME
-                    
+                next_source_stop = exit_connection[1]
+                next_source_time = exit_connection[3]                    
 
                 # If we cannot do more changes
                 if k == 0:
@@ -258,8 +267,7 @@ class JourneyPlanner:
 
                 # If we can do more changes and we need to exit the line at some point after this connection
                 else:
-                    next_source_stop = exit_connection[1]
-                    next_source_time = exit_connection[3]
+                    
                     
                     # If the budget is not zero and we can arrive at destination, skip this
                     if enter_connection[1] == target_stop or exit_connection[1] == target_stop or (target_stop in self.footpaths and exit_connection[1] in self.footpaths[target_stop]):
@@ -407,7 +415,7 @@ class JourneyPlanner:
         return  1 / (1 + np.exp(- np.random.normal(AVERAGE_CONFIDENCE, VARIANCE_CONFIDENCE, 1)))
     
     
-    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, maximum_waiting_time = 1200, verbose=False):
+    def plan_route(self, day, source_stop, target_stop, min_departure_time, max_arrival_time, minimum_confidence=0, max_changes=None, maximum_waiting_time = 600, verbose=False):
         assert max_arrival_time > min_departure_time
         assert source_stop != target_stop
         
