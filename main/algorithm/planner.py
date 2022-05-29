@@ -412,10 +412,10 @@ class JourneyPlanner:
         dep_stop_id = dep_stop['stop_id']
         arr_stop_id = arr_stop['stop_id']
         self.count_tot_confidence_stations +=1
-        if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id]:
-            result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] >= maximum_delay / 60.)]
+        if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id] and weekday in self.confidences[dep_stop_id][arr_stop_id]:
+            result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] <= maximum_delay / 60.)]
             if len(result) > 0:
-                return min(result, key=lambda x:x[1])[2]
+                return max(result, key=lambda x:x[1])[2]
             else: 
                 return 1.
         else:
