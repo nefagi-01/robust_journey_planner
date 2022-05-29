@@ -409,9 +409,10 @@ class JourneyPlanner:
         return journey
     
     def compute_confidence(self, dep_stop, arr_stop, weekday, maximum_delay):
-        dep_stop_id = dep_stop['stop_id']
-        arr_stop_id = arr_stop['stop_id']
+        dep_stop_id = dep_stop['stop_id'].split(':')[0]
+        arr_stop_id = arr_stop['stop_id'].split(':')[0]
         self.count_tot_confidence_stations +=1
+        print(dep_stop_id, arr_stop_id, weekday)
         if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id] and weekday in self.confidences[dep_stop_id][arr_stop_id]:
             result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] <= maximum_delay / 60.)]
             if len(result) > 0:
