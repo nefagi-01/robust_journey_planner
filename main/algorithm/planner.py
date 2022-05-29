@@ -365,7 +365,7 @@ class JourneyPlanner:
         next_departure_time = path[2][2] if len(path) > 2 else maximum_arrival_time
         maximum_delay = next_departure_time - trip_end[3]
         trip = Trip(dep_stop=self.stops[trip_start[0]], arr_stop=self.stops[trip_end[1]], dep_time=trip_start[2], arr_time=trip_end[3],
-                        trip=self.trips[trip_start[4]], confidence=self.compute_confidence(self.stops[trip_start[0]], self.stops[trip_end[1]], weekday, maximum_delay))
+                        trip=self.trips[trip_start[4]], confidence=self.compute_confidence(self.stops[trip_start[0]], self.stops[trip_end[1]], weekday+1, maximum_delay))
         journey.add_trip(trip)
 
         # Update previous exit connection for detecting footpaths
@@ -412,7 +412,6 @@ class JourneyPlanner:
         dep_stop_id = dep_stop['stop_id']
         arr_stop_id = arr_stop['stop_id']
         self.count_tot_confidence_stations +=1
-        print(dep_stop, arr_stop, weekday, '\n')
         if dep_stop_id in self.confidences and arr_stop_id in self.confidences[dep_stop_id]:
             result = [el for el in self.confidences[dep_stop_id][arr_stop_id] if (el[0] == weekday) & (el[1] >= maximum_delay / 60.)]
             if len(result) > 0:
