@@ -24,6 +24,9 @@
 * [FAQ](#FAQ)
 
 ----
+
+## HOW-TO
+
 You can find the presentation of our project at [this](https://www.youtube.com/watch?v=CFOtji6Wsvc&ab_channel=VincenzoPecorella) link.
 
 To run the journey planner, you only need to run 1 file, which is `final_planner_demostration.ipynb`. Indeed, all the processed data has already been saved in pickle files, which get loaded at the beginning of the notebook.
