@@ -1,3 +1,6 @@
 data/prova.txt filter=lfs diff=lfs merge=lfs -text
 data/untitled.txt filter=lfs diff=lfs merge=lfs -text
 data/provaa.txt filter=lfs diff=lfs merge=lfs -text
+data/untitled1.txt filter=lfs diff=lfs merge=lfs -text
+data/untitled2.txt filter=lfs diff=lfs merge=lfs -text
+data/nuovo.txt filter=lfs diff=lfs merge=lfs -text
