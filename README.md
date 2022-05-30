@@ -24,9 +24,21 @@
 * [FAQ](#FAQ)
 
 ----
-## HOW-TO
+You can find the presentation of our project at [this](https://www.youtube.com/watch?v=CFOtji6Wsvc&ab_channel=VincenzoPecorella) link.
 
-This section intentionally blank. Students must complete it with instructions on how to use the code in their project.
+To run the journey planner, you only need to run 1 file, which is `final_planner_demostration.ipynb`. Indeed, all the processed data has already been saved in pickle files, which get loaded at the beginning of the notebook.
+In any case, the followings are the files of the repo, with a brief explanation of what they contain.
+
+1. `environment.yml`, `Dockerfile`, `requirements.txt`: Environment setup files
+2. `data` folder: contains all the processed data that the Journey Planner uses. They are compressed with `pickle`
+3. `figs` folder: contains images shown in the `readme.md`
+4. `main` folder: contains all the code of the Project
+
+In the `main` folder, there are:
+1. `algorithm` folder: it is the folder containing the code of the routing algorithm. It contains `journey.py`, with the classes definitions necessary for the algorithm, `planner.py`, with the implementation of the variant of the CSA algorithm and `algo.ipynb` that was used to test and debug the algorithm.
+2. `data wrangling` folder: it contains the code used to clean and preprocess the various datasets. `dataset_info` was used as an initial visualization of the datasets at hand from the HDFS. `dataset_loader` contains the code used to do the data wrangling operations on `pyspark`. The code in `hive_extraction` was used to do queries through Hive in order to retrieve the processed data from HDFS and save the datasets in `pickle`. 
+3. `visualization` folder: it contains the code used to visualize our results. `visualization_helpers` contain the functions for the plotting, while `map_visualization.ipynb` was used to test and debug the map and the user interface.
+4. As mentioned earlier `final_planner_demostration.ipynb` is the final notebook containing the Journey Planner product ready for the user. It is the only file that needs to be run in order to try our planner. All of the cells need to be run from top to bottom.
 
 [top](#Content)
 
