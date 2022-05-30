@@ -1,0 +1,2 @@
+data/prova.txt filter=lfs diff=lfs merge=lfs -text
+data/untitled.txt filter=lfs diff=lfs merge=lfs -text
