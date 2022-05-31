@@ -43,6 +43,9 @@ In the `main` folder, there are:
 3. `visualization` folder: it contains the code used to visualize our results. `visualization_helpers` contain the functions for the plotting, while `map_visualization.ipynb` was used to test and debug the map and the user interface.
 4. As mentioned earlier `final_planner_demostration.ipynb` is the final notebook containing the Journey Planner product ready for the user. It is the only file that needs to be run in order to try our planner. All of the cells need to be run from top to bottom.
 
+To replicate completely the data processing, you would firstly need to run the whole `dataset_loader.ipynb` and then `hive_extraction.ipynb`. Finally, you would need to use the `final_planner.ipynb` to run the journey planner. But all of this is not needed to use the product, as the data has already been prepared and stored in the `data` folder.
+
+
 [top](#Content)
 
 ----
